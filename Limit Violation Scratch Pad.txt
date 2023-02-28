@@ -1,0 +1,41 @@
+BATCH>UGX/KCB.CASH.MONITORING.ALERT
+TSA.SERVICE>UGX/KCB.CASH.MONITORING.ALERT
+PGM.FILE>KCB.CASH.MONITORING.ALERT
+
+BATCH>UGX/KCB.MSL.CASH.MGMT.REPORT
+TSA.SERVICE>UGX/KCB.MSL.CASH.MGMT.REPORT
+PGM.FILE>KCB.MSL.CASH.MGMT.REPORT
+
+
+KCP.BP>**mailer**
+
+
+KCB.SYSTEM.PARAM>CASH.ALERT
+
+TSA.SERVICE>...CASH...ALERT...
+
+
+
+from
+to
+
+Hello-there
+Help---her-
+
+hello-
+yellow
+
+
+
+string- 2
+-trings
+
+string	1
+st-ing
+
+string	6
+gnirts
+
+string- 3
+-things
+
