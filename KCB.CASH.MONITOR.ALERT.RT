@@ -1,0 +1,347 @@
+    SUBROUTINE KCB.CASH.MONITOR.ALERT.RT
+*   Sending Realtime Alert On Cash Breaches
+*   *------------------------------------------------------------------------------------------
+    $INSERT I_COMMON
+    $INSERT I_EQUATE
+    $INSERT I_F.ACCOUNT
+    $INSERT I_F.DEPT.ACCT.OFFICER
+    $INSERT I_F.KCB.L.MSL.CASH.MGMT
+    $INSERT I_F.KCB.SYSTEM.PARAM
+    $INSERT I_F.KCB.MSL.LIMITS.PARAM
+    $INSERT I_F.KCB.DAILY.CASH.LIMIT.LOG
+
+    FN.KCB.DAILY.CASH.LIMIT.LOG = "F.KCB.DAILY.CASH.LIMIT.LOG"
+    F.KCB.DAILY.CASH.LIMIT.LOG=''
+    CALL OPF(FN.KCB.DAILY.CASH.LIMIT.LOG,F.KCB.DAILY.CASH.LIMIT.LOG)
+    Y.CURRENT.DAY = TODAY
+
+    CALL F.READ(FN.KCB.DAILY.CASH.LIMIT.LOG,Y.CURRENT.DAY,R.CASH.LOG,F.KCB.DAILY.CASH.LIMIT.LOG,YERR)
+
+    IF R.CASH.LOG THEN
+        RETURN
+    END ELSE
+        GOSUB INIT
+        GOSUB PROCESS
+
+        RETURN
+
+    END
+INIT:
+
+    FN.ACCOUNT = "F.ACCOUNT"
+    F.ACCOUNT = ""
+    CALL OPF(FN.ACCOUNT,F.ACCOUNT)
+
+    FN.KCB.DAILY.CASH.LIMIT.LOG = "F.KCB.DAILY.CASH.LIMIT.LOG"
+    F.KCB.DAILY.CASH.LIMIT.LOG=''
+    CALL OPF(FN.KCB.DAILY.CASH.LIMIT.LOG,F.KCB.DAILY.CASH.LIMIT.LOG)
+
+    FN.KCB.L.MSL.CASH.MGMT = "F.KCB.L.MSL.CASH.MGMT"
+    F.KCB.L.MSL.CASH.MGMT = ""
+    CALL OPF(FN.KCB.L.MSL.CASH.MGMT,F.KCB.L.MSL.CASH.MGMT)
+
+    FN.KCB.MSL.LIMITS.PARAM = "F.KCB.MSL.LIMITS.PARAM"
+    F.KCB.MSL.LIMITS.PARAM = ""
+    CALL OPF(FN.KCB.MSL.LIMITS.PARAM,F.KCB.MSL.LIMITS.PARAM)
+
+    FN.DEPT.ACCT.OFFICER = "F.DEPT.ACCT.OFFICER"
+    F.DEPT.ACCT.OFFICER = ""
+    CALL OPF(FN.DEPT.ACCT.OFFICER,F.DEPT.ACCT.OFFICER)
+
+    FN.PARAM = "F.KCB.SYSTEM.PARAM"
+    F.PARAM = ''
+    CALL OPF(FN.PARAM,F.PARAM)
+
+    CALL F.READ(FN.PARAM,"CASH.ALERT",R.PARAM,F.PARAM,Y.ERROR)
+    LOCATE "FILE.PATH" IN R.PARAM<KCB.SYS.PARAM.NAME,1> SETTING IP.POS THEN
+        Y.PATH = R.PARAM<KCB.SYS.PARAM.VALUE.1,IP.POS>
+    END
+
+    IF Y.PATH THEN
+        OPENPATH Y.PATH TO B.IN.PATH ELSE
+            CREATE.FOLDER  = "CREATE.FILE ":Y.PATH:" TYPE=UD"
+            EXECUTE CREATE.FOLDER
+        END
+    END
+
+    FILE.NAME = "CashAlert_":TODAY:".csv"
+    OPENSEQ Y.PATH,FILE.NAME TO FILE.OUT ELSE NULL
+
+    LOCATE "PORT" IN R.PARAM<KCB.SYS.PARAM.NAME,1> SETTING PORT.POS THEN
+        Y.PORT = R.PARAM<KCB.SYS.PARAM.VALUE.1,PORT.POS>
+    END
+
+    LOCATE "SEND.TO" IN R.PARAM<KCB.SYS.PARAM.NAME,1> SETTING IP.POS THEN
+        Y.TO = R.PARAM<KCB.SYS.PARAM.VALUE.1,IP.POS>
+    END
+
+    LOCATE "SUBJECT" IN R.PARAM<KCB.SYS.PARAM.NAME,1> SETTING SUB.POS THEN
+        Y.SUBJECT = R.PARAM<KCB.SYS.PARAM.VALUE.1,SUB.POS>
+        Y.SUBJECT :=' - ' :Y.CURRENT.DAY
+    END
+
+    LOCATE "FROM" IN R.PARAM<KCB.SYS.PARAM.NAME,1> SETTING FRM.POS THEN
+        Y.FROM = R.PARAM<KCB.SYS.PARAM.VALUE.1,FRM.POS>
+    END
+
+    LOCATE "PHONE.NO" IN R.PARAM<KCB.SYS.PARAM.NAME,1> SETTING PH.POS THEN
+        Y.PHONE.NO = R.PARAM<KCB.SYS.PARAM.VALUE.1,PH.POS>
+    END
+
+    LOCATE "BCC" IN R.PARAM<KCB.SYS.PARAM.NAME,1> SETTING BC.POS THEN
+        Y.BCC = R.PARAM<KCB.SYS.PARAM.VALUE.1,BC.POS>
+    END
+
+    LOCATE "REPLY.TO" IN R.PARAM<KCB.SYS.PARAM.NAME,1> SETTING REPLY.POS THEN
+        Y.REPLYTO = R.PARAM<KCB.SYS.PARAM.VALUE.1,REPLY.POS>
+    END
+
+    LOCATE "CC" IN R.PARAM<KCB.SYS.PARAM.NAME,1> SETTING CC.POS THEN
+        Y.CC = R.PARAM<KCB.SYS.PARAM.VALUE.1,CC.POS>
+    END
+
+    LOCATE "ALERT.MESSAGE" IN R.PARAM<KCB.SYS.PARAM.NAME,1> SETTING CC.POS THEN
+        ALERT.MESSAGE = R.PARAM<KCB.SYS.PARAM.APPL,CC.POS>
+        CHANGE SM TO ' ' IN ALERT.MESSAGE
+        ALERT.MESSAGE :="                                                                                                                                                                                                                                                                                                  "
+
+    END
+    CNT = 0
+    AC.LIST = ''
+    SEL.CMD = ''
+    SEL.LIST = ''
+
+    RETURN
+
+
+PROCESS:
+********
+    CALL F.READ(FN.PARAM,"CASH.ALERT",R.PARAM,F.PARAM,Y.ERROR)
+    
+    *   REPORT.TIME
+    LOCATE "REPORT.TIME" IN R.PARAM<KCB.SYS.PARAM.NAME,1> SETTING IP.POS THEN
+        REPORT.TIME = R.PARAM<KCB.SYS.PARAM.VALUE.1,IP.POS>
+        CHANGE ':' TO '' IN REPORT.TIME
+        CHANGE '.' TO '' IN REPORT.TIME
+    END
+
+    IF LEN(REPORT.TIME) < 6 THEN
+        REPORT.TIME = FMT(REPORT.TIME,'L2%7')
+        CHANGE '.' TO '' IN REPORT.TIME
+    END
+
+    JBASE.TIME = OCONV(TIME(),"MTS")[1,8]
+    CHANGE ':' TO '' IN JBASE.TIME
+
+    IF JBASE.TIME >= REPORT.TIME  THEN
+        CALL STOP.SERVICES.API("UGX/KCB.CASH.MONITOR.ALERT.RT")
+        RETURN
+    END
+
+    SEL.DAO = "SSELECT ":FN.DEPT.ACCT.OFFICER     ;*:" WITH @ID LIKE 46..."
+    CALL EB.READLIST(SEL.DAO,DAO.LIST,'',NO.RECS,'')
+
+    FOR JJ = 1 TO NO.RECS
+        YBRANCH = DAO.LIST<JJ>
+
+        SEL.LIST = ''
+        Y.POSS.1 = ''
+        REC.ID = ''
+        FLAG = ""
+        IF YBRANCH = '4665' OR YBRANCH = '3302' OR YBRANCH = '3406' OR YBRANCH = '4905' THEN CONTINUE         ;* Parameterized this.
+        SEL.CMD = "SSELECT ":FN.KCB.L.MSL.CASH.MGMT:" WITH @ID LIKE ":YBRANCH:"...":"ONLINE"
+        CALL EB.READLIST(SEL.CMD,SEL.LIST,'',NO.REC,'')
+        BRANCH.TXNS = ""
+        CCY.EUR = "" ; CCY.GBP = "" ; CCY.KES = "" ; CCY.RWF = "" ; CCY.UGX = "" ; CCY.USD = ""
+        COMPLIANCE.OFF.PEAK = "" ; COMPLIANCE.PEAK = "" ; TOTAL.AMT = 0
+
+        LOOP
+            REMOVE REC.ID FROM SEL.LIST SETTING Y.POSS.1
+        WHILE REC.ID : Y.POSS.1
+            CALL F.READ(FN.KCB.L.MSL.CASH.MGMT,REC.ID,R.CASH.MGMT,F.KCB.L.MSL.CASH.MGMT,ERR.1)
+            FLAG = 1
+            KK = 0
+            LOCATE YBRANCH IN PROCESSED.TXNS<1,1> SETTING D.POS ELSE
+                PROCESSED.TXNS<2,-1> = YBRANCH
+            END
+*
+            FOR KK = 1 TO DCOUNT(R.CASH.MGMT<1>,VM)
+                CCY = R.CASH.MGMT<1,KK>[1,3]
+                BEGIN CASE
+                    CASE CCY = "EUR"
+                        CCY.EUR += R.CASH.MGMT<2,KK>
+                    CASE CCY = "GBP"
+                        CCY.GBP += R.CASH.MGMT<2,KK>
+                    CASE CCY = "KES"
+                        CCY.KES += R.CASH.MGMT<2,KK>
+                    CASE CCY = "RWF"
+                        CCY.RWF += R.CASH.MGMT<2,KK>
+                    CASE CCY = "UGX"
+                        CCY.UGX += R.CASH.MGMT<2,KK>
+                    CASE CCY = "USD"
+                        CCY.USD += R.CASH.MGMT<2,KK>
+                END CASE
+                TOTAL.AMT += ABS(R.CASH.MGMT<3,KK>)
+
+            NEXT KK
+
+        *   Delete record after aggregating
+        *
+            YBRANCH.RECS<1> = REC.ID
+            DELETE REC.ID, FN.KCB.L.MSL.CASH.MGMT
+        REPEAT
+        IF FLAG THEN
+            CALL F.READ(FN.KCB.MSL.LIMITS.PARAM,YBRANCH,R.LIMIT.REC,F.KCB.MSL.LIMITS.PARAM,LIM.ERR)
+            PEAK.BAL = R.LIMIT.REC<1>
+            OFF.PEAK.BAL = R.LIMIT.REC<2>
+            IF (TOTAL.AMT > PEAK.BAL) THEN
+                COMPLIANCE.PEAK = "NOT OKAY"
+            END ELSE
+                COMPLIANCE.PEAK = "OKAY"
+            END
+*
+            IF (TOTAL.AMT > OFF.PEAK.BAL) THEN
+                COMPLIANCE.OFF.PEAK = "NOT OKAY"
+            END ELSE
+                COMPLIANCE.OFF.PEAK = "OKAY"
+            END
+            CCY.EUR = DROUND(CCY.EUR,0)
+            CCY.GBP = DROUND(CCY.GBP,0)
+            CCY.KES=DROUND(CCY.KES,0)
+            CCY.RWF = DROUND(CCY.RWF,0)
+            CCY.USD=DROUND(CCY.USD,0)
+            TOTAL.AMT = DROUND(TOTAL.AMT,0)
+            PEAK.BAL = DROUND(PEAK.BAL,0)
+            OFF.PEAK.BAL =DROUND(OFF.PEAK.BAL,0)
+            COMPLIANCE.PEAK = DROUND(COMPLIANCE.PEAK,0)
+            COMPLIANCE.OFF.PEAK =DROUND(COMPLIANCE.OFF.PEAK,0)
+            Y.DATE.TIME = TIMEDATE()
+
+            IF (TOTAL.AMT > PEAK.BAL) THEN
+                BR.COUNTER + = 1
+                CALL F.READ(FN.DEPT.ACCT.OFFICER,YBRANCH,R.DAO,F.DEPT.ACCT.OFFICER,DAO.ERR)
+                BR.NAME =R.DAO<EB.DAO.NAME>
+                BREACHED.AMT = TOTAL.AMT - PEAK.BAL
+
+                FILE.OUT.DATA = YBRANCH:',':BR.NAME:',':TOTAL.AMT:',':PEAK.BAL:',':BREACHED.AMT
+                IF FILE.OUT THEN
+                    WRITESEQ "Branch,BranchName,TotalAmount,PeakBalance,BreachedbyAmount" APPEND TO FILE.OUT  ELSE NULL
+                END
+                WRITESEQ FILE.OUT.DATA  APPEND TO FILE.OUT  ELSE NULL
+                OUT.DATA<-1> = BR.COUNTER:'. ':YBRANCH:' - ':BR.NAME:' Total Cash: ':TOTAL.AMT:' Cash Limit: ':PEAK.BAL:' Breached Amount ':BREACHED.AMT
+                CALL OCOMO (OUT.DATA)
+
+            *   Delete associated records since an e-mail has been sent to 
+            *   avoid duplicate escalation during the day and at pre-COB stage
+                FOR IND = 1 TO DCOUNT(YBRANCH.RECS, @VM)
+                    REC.ID.DEL = YBRANCH.RECS<IND>
+                    DELETE F.KCB.L.MSL.CASH.MGMT, REC.ID.DEL
+                NEXT IND
+            END
+        END
+    NEXT JJ
+
+    IF OUT.DATA THEN
+        Y.MESSAGE = OUT.DATA
+        CHANGE FM TO ' ' IN Y.MESSAGE
+        GOSUB CONVERT.EMAIL
+    END
+
+    RETURN
+
+CONVERT.EMAIL:
+*============
+
+    Y.CONV.OUT=''
+    GOSUB GEN.SESSION
+    MESS.SENT = ''
+    MESS.TO.LOG=''
+    Y.ACCT ="000000000"
+    TRANS.ID = "CASHMONITOR"
+    Y.AMT = 0
+    Y.MESSAGE.KEEP = ''
+    Y.MESSAGE.KEEP = Y.MESSAGE
+
+    Y.CONV.OUT<-1> = '<Request>'
+    Y.CONV.OUT<-1> = '<SessionId>':Y.SESSION.ID:'</SessionId>'
+    Y.CONV.OUT<-1> = '<UserName>T24R14</UserName><Password>TQins3lk33S3kIwgZgIhHyj9Gf4ioO8JTKZXa2IBBi0=</Password>'
+    Y.CONV.OUT<-1> = '<BillerId>20</BillerId><ServiceId>386</ServiceId><CompanyId>KE0010001</CompanyId>'
+    Y.CONV.OUT<-1> = '<ServiceShortCode>NOT</ServiceShortCode><ChannelId>4</ChannelId>'
+    Y.CONV.OUT<-1> = '<MobileNo>':Y.PHONE.NO:'</MobileNo>'
+    Y.CONV.OUT<-1> = '<From>':Y.FROM:'</From>'
+    Y.CONV.OUT<-1> = '<To>':Y.TO:'</To>'
+    Y.CONV.OUT<-1> = '<ReplyTo>':Y.REPLYTO:'</ReplyTo>'
+    Y.CONV.OUT<-1> = '<Subject>':Y.SUBJECT:'</Subject>'
+    Y.CONV.OUT<-1> = '<SendDate>':TODAY:'</SendDate>'
+    Y.CONV.OUT<-1> = '<Cc>':Y.CC:'</Cc>'
+    Y.CONV.OUT<-1> = '<Bcc>':Y.BCC:'</Bcc>'
+    Y.CONV.OUT<-1> = '<Message>':Y.MESSAGE:'</Message>'
+    Y.CONV.OUT<-1> = '<AccountNumber>':Y.ACCT:'</AccountNumber>'
+    Y.CONV.OUT<-1> = '<Number>':Y.PHONE.NO:'</Number>'
+    Y.CONV.OUT<-1> = '<TransactionAmount>':Y.AMT:'</TransactionAmount>'
+    Y.CONV.OUT<-1> = '<TransactionReference>':TRANS.ID:'</TransactionReference>'
+    Y.CONV.OUT<-1> = '</Request>'
+    CONVERT @FM TO "" IN Y.CONV.OUT
+
+    GOSUB SEND
+    RETURN
+SEND:
+*=====
+
+    Y.RESP.DATA=''
+    Y.RESP.CODE=''
+
+    IF Y.TO # "" THEN
+        CALL KCB.VALIDATE.EXEC.SERVER(Y.PARAM.ID,Y.RETURN.FLAG,Y.ERROR.MSG)
+
+        IF Y.RETURN.FLAG EQ "Y" THEN
+
+            CHANGE ',' TO FM IN Y.TO
+            CNT.ADD = DCOUNT(Y.TO,FM)
+            ADD.ADDR = 1
+
+            LOOP
+            WHILE ADD.ADDR LE CNT.ADD
+                Y.FILE.ATTACH = Y.PATH:'/':FILE.NAME
+                Y.TO.ONE = Y.TO<ADD.ADDR>
+                CALL KCB.COMMON.MAILER(Y.FROM,Y.SUBJECT,Y.MESSAGE,Y.TO.ONE,Y.FILE.ATTACH)
+                ADD.ADDR++
+            REPEAT
+            Y.RESP.CODE = 1
+        END ELSE
+            CALL OCOMO("Server execution error..":Y.ERROR.MSG)
+        END
+    END
+
+    IF Y.RESP.CODE = 1 THEN
+        GOSUB UPDATE.LOG
+    END
+
+    RETURN
+
+GEN.SESSION:
+*===============
+    CALL ALLOCATE.UNIQUE.TIME(UNQ.NO)
+    UNQ.NO = EREPLACE(UNQ.NO,".","")
+    Y.SESSION.ID = UNQ.NO[1,12] + 1
+    Y.SESSION.ID = RND(Y.SESSION.ID)
+    RETURN
+
+    RETURN
+
+UPDATE.LOG:
+*======================
+
+    R.LOG<DAILY.CASH.TIME.SENT> = JBASE.TIME
+    R.LOG<DAILY.CASH.SUBJECT> =Y.SUBJECT
+    R.LOG<DAILY.CASH.MESSAGE.SENT> = Y.MESSAGE.KEEP
+    R.LOG<DAILY.CASH.TO> = Y.TO
+    R.LOG<DAILY.CASH.CC> = Y.CC
+    R.LOG<DAILY.CASH.BC> = Y.BCC
+
+    WRITE R.LOG TO F.KCB.DAILY.CASH.LIMIT.LOG,Y.CURRENT.DAY
+    CALL JOURNAL.UPDATE(Y.CURRENT.DAY)
+
+    RETURN
+
+END
