@@ -57,7 +57,7 @@ PROCESS:
         CALL F.READ(FN.ACCOUNT, ACCT.ID, R.ACCT.DTLS, F.ACCOUNT, AC.ERR)
         TELLER.ID = ACCT.ID[9,4]
         BRANCH.ID = R.ACCT.DTLS<AC.ACCOUNT.OFFICER>:'.':TELLER.ID:'.':TODAY:'.':"ONLINE"
-        AC.CCY   = R.ACCT.DTLS<AC.CURRENCY>
+        AC.CCY = R.ACCT.DTLS<AC.CURRENCY>
 
         CALL F.READ(FN.KCB.L.MSL.CASH.MGMT, BRANCH.ID, R.DATA.DTLS, F.KCB.L.MSL.CASH.MGMT, MGMT.ERR)
         ACCT.BAL = R.ACCT.DTLS<AC.ONLINE.CLEARED.BAL>
@@ -66,7 +66,7 @@ PROCESS:
         END
 
 *Rate Conversion Variables
-*=============================
+*=========================
         RATE     = ''
         MARKET   = ''
         LCY.AMT  = ''
@@ -74,7 +74,6 @@ PROCESS:
         DIF.RATE = ''
 
         LOCATE ACCT.ID IN R.DATA.DTLS<KCB.MSL.CASH.ACCT, 1> SETTING SEE.POS  THEN
-
             R.DATA.DTLS<KCB.MSL.CASH.AMT, SEE.POS> = ACCT.BAL
             IF (R.ACCT.DTLS<AC.CURRENCY> # LCCY) THEN
                 CALL MIDDLE.RATE.CONV.CHECK(ACCT.BAL, AC.CCY, RATE, MARKET, LCY.AMT, DIF.AMT, DIF.RATE)
