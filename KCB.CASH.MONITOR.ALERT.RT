@@ -9,11 +9,35 @@
     $INSERT I_F.KCB.SYSTEM.PARAM
     $INSERT I_F.KCB.MSL.LIMITS.PARAM
     $INSERT I_F.KCB.DAILY.CASH.LIMIT.LOG
+    $INSERT I_F.TSA.SERVICE
+
+    FN.TSA.SER = "F.TSA.SERVICE"
+    F.TSA.SER = ""
+    CALL OPF(FN.TSA.SER, F.TSA.SER)
 
     FN.KCB.DAILY.CASH.LIMIT.LOG = "F.KCB.DAILY.CASH.LIMIT.LOG"
     F.KCB.DAILY.CASH.LIMIT.LOG=''
     CALL OPF(FN.KCB.DAILY.CASH.LIMIT.LOG,F.KCB.DAILY.CASH.LIMIT.LOG)
-    CURRENT.DAY.HOUR = TODAY:JBASE.TIME[1, 2]
+
+    HOUR = FIELD(OCONV(TIME(),'MTS'),":",1)
+    MINUTE = FIELD(OCONV(TIME(),'MTS'),":",2)
+    MINUTE = MINUTE * 60
+    CUR.TIME = OCONV(TIME(),'MTS')
+    CUR.TIME = CHANGE(CUR.TIME, ":", "")
+
+    DEFAULT.MINUTE = 300 ;  * "Minutes in seconds ~ 5 Minutes"
+
+    CALL F.READ(FN.TSA.SER, "UGX/KCB.CASH.MONITOR.ALERT.RT", R.TSA.SER, FN.TSA.SER, SER.ERR)
+    IF R.TSA.SER<TS.TSM.REVIEW.TIME> THEN
+        MINUTE.ID = DIV(MINUTE, R.TSA.SER<TS.TSM.REVIEW.TIME>) + 1
+    END ELSE
+        MINUTE.ID = DIV(MINUTE, DEFAULT.MINUTE) + 1
+    END
+
+    *************
+    *   ID Consist Of Today's Date, Hour & Minutes Frequency As Set Up In Service REVIEW.TIME'.
+    ************  
+    CURRENT.DAY.HOUR = TODAY:HOUR:MINUTE.ID
 
     CALL F.READ(FN.KCB.DAILY.CASH.LIMIT.LOG, CURRENT.DAY.HOUR, R.CASH.LOG, F.KCB.DAILY.CASH.LIMIT.LOG, YERR)
 
@@ -59,7 +83,7 @@ INIT:
         END
     END
 
-    FILE.NAME = "CashAlert_":TODAY:".csv"
+    FILE.NAME = "CashAlert":"_":TODAY:"_":MINUTE.ID:".csv"
     OPENSEQ Y.PATH,FILE.NAME TO FILE.OUT ELSE NULL
 
     LOCATE "PORT" IN R.PARAM<KCB.SYS.PARAM.NAME,1> SETTING PORT.POS THEN
@@ -97,7 +121,7 @@ INIT:
 
     LOCATE "ALERT.MESSAGE" IN R.PARAM<KCB.SYS.PARAM.NAME,1> SETTING CC.POS THEN
         ALERT.MESSAGE = R.PARAM<KCB.SYS.PARAM.APPL,CC.POS>
-        CHANGE SM TO ' ' IN ALERT.MESSAGE
+        CHANGE @SM TO ' ' IN ALERT.MESSAGE
         ALERT.MESSAGE :="                                                                                                                                                                                                                                                                                                  "
 
     END
@@ -220,7 +244,7 @@ PROCESS:
 
     IF OUT.DATA THEN
         Y.MESSAGE = OUT.DATA
-        CHANGE FM TO ' ' IN Y.MESSAGE
+        CHANGE @FM TO ' ' IN Y.MESSAGE
         GOSUB CONVERT.EMAIL
     END
     RETURN
@@ -272,7 +296,7 @@ SEND:
 
         IF Y.RETURN.FLAG EQ "Y" THEN
 
-            CHANGE ',' TO FM IN Y.TO
+            CHANGE ',' TO @FM IN Y.TO
             CNT.ADD = DCOUNT(Y.TO,FM)
             ADD.ADDR = 1
 
@@ -280,7 +304,7 @@ SEND:
             WHILE ADD.ADDR LE CNT.ADD
                 Y.FILE.ATTACH = Y.PATH:'/':FILE.NAME
                 Y.TO.ONE = Y.TO<ADD.ADDR>
-                CALL KCB.COMMON.MAILER(Y.FROM,Y.SUBJECT,Y.MESSAGE,Y.TO.ONE,Y.FILE.ATTACH)
+                CALL KCB.COMMON.MAILER(Y.FROM, Y.SUBJECT, Y.MESSAGE, Y.TO.ONE, Y.FILE.ATTACH)
                 ADD.ADDR++
             REPEAT
             Y.RESP.CODE = 1
