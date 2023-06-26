@@ -74,3 +74,27 @@ gnirts
 string- 3
 -things
 
+
+
+
+KCB.MSL.LIMITS.PARAM		->		Limit Values Setup Per GLs
+LIST F.KCB.MSL.LIMITS.PARAM WITH @ID LIKE ...4663...                                                                               PAGE    1 17:29:10  29 MAR 2023
+
+@ID............. 4663
+@ID............. 4663
+PARAM.ID........ 4663
+BR.PEAK.LIM..... 1500000000
+BR.OFF.PEAK.LIM. 1500000000
+CASH.CATEG......
+RESERVED.1......
+RESERVED.2......
+RESERVED.3......
+RECORD.STATUS...
+CURR.NO......... 3
+INPUTTER........ 34_UG31969__OFS_BROWSERTC
+DATE.TIME....... 2203221218
+AUTHORISER...... 65_UG31380_OFS_BROWSERTC
+CO.CODE......... UG0010022
+DEPT.CODE....... 3406
+AUDITOR.CODE....
+AUDIT.DATE.TIME.
